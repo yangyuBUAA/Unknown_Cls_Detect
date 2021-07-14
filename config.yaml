@@ -1,6 +1,16 @@
+CURRENT_DIR: "/Users/yangyu/Desktop/sogou/新词发现/model/"
+TRAIN_DIR: "data/train/train.txt"
+EVAL_DIR: "data/eval/eval.txt"
+TEST_DIR: "data/test/test.txt"
+
+
+
 categories:
   - 软件开发
   - 会计审计
-  - 征婚交友
+  - 汽车销售
+
+use_cuda: True
 
 use_ajustive_attention: False
+bert_model_path: "huggingface_pretrained_model/bert-base-chinese"

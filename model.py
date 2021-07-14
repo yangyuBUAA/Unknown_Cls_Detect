@@ -11,7 +11,7 @@ class FeatureExtractLayer(torch.nn.Module):
     def __init__(self, config):
         super(FeatureExtractLayer, self).__init__()
         self.config = config
-        self.bert_model = BertModel.from_pretrained("huggingface_pretrained_model/bert-base-chinese")
+        self.bert_model = BertModel.from_pretrained(self.config["bert_model_path"])
 
     def forward(self, tokenized):
         bert_output = self.bert_model(tokenized["input_ids"], tokenized["attention_mask"], tokenized["token_type_ids"])
@@ -23,7 +23,7 @@ class LabelEmbedding(torch.nn.Module):
     def __init__(self, config):
         super(LabelEmbedding, self).__init__()
         self.config = config
-        self.bert_model_modified = BertModelModified.from_pretrained("huggingface_pretrained_model/bert-base-chinese")
+        self.bert_model_modified = BertModelModified.from_pretrained(self.config["bert_model_path"])
 
     def forward(self, tokenized):
         embedding_layer = self.bert_model_modified(tokenized["input_ids"], tokenized["attention_mask"], tokenized["token_type_ids"])
@@ -37,7 +37,7 @@ class LabelEmbeddingLayer(torch.nn.Module):
         self.config = config
         self.label_embedding = LabelEmbedding(self.config)
         self.categories = self.config["categories"]
-        self.tokenizer = BertTokenizer.from_pretrained("huggingface_pretrained_model/bert-base-chinese")
+        self.tokenizer = BertTokenizer.from_pretrained(self.config["bert_model_path"])
         self.label_embedded = list()
         for cate in self.categories:
             tokenized = self.tokenizer(cate, return_tensors="pt", truncation=True, max_length=10, padding="max_length")
