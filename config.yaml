@@ -1,9 +1,9 @@
-CURRENT_DIR: "/Users/yangyu/Desktop/sogou/新词发现/model/"
+CURRENT_DIR: "/home/yangyu/unknown_cls_detect/"
 TRAIN_DIR: "data/train/train.txt"
 EVAL_DIR: "data/eval/eval.txt"
 TEST_DIR: "data/test/test.txt"
 
-
+checkpoint_path: "checkpoint/"
 
 categories:
   - 软件开发
@@ -17,3 +17,4 @@ bert_model_path: "huggingface_pretrained_model/bert-base-chinese"
 
 LR: 0.00003
 EPOCH: 30
+batch_size: 64
