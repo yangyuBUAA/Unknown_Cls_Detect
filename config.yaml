@@ -14,3 +14,6 @@ use_cuda: True
 
 use_ajustive_attention: False
 bert_model_path: "huggingface_pretrained_model/bert-base-chinese"
+
+LR: 0.00003
+EPOCH: 30

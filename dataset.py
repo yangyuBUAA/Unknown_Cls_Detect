@@ -8,7 +8,7 @@ class LEDataset(Dataset):
         self.labels = label_list
 
     def __getitem__(self, item):
-        return self.dataset[item], self.labels[item]
+        return self.dataset[item], torch.tensor(int(self.labels[item]))
 
     def __len__(self):
         return len(self.dataset)

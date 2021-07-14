@@ -13,8 +13,8 @@ class FeatureExtractLayer(torch.nn.Module):
         self.config = config
         self.bert_model = BertModel.from_pretrained(self.config["bert_model_path"])
 
-    def forward(self, tokenized):
-        bert_output = self.bert_model(tokenized["input_ids"], tokenized["attention_mask"], tokenized["token_type_ids"])
+    def forward(self, input_ids, attention_mask, token_type_ids):
+        bert_output = self.bert_model(input_ids, attention_mask, token_type_ids)
         return bert_output.last_hidden_state
 
 
@@ -127,8 +127,8 @@ class Model(torch.nn.Module):
 
         self.classification_layer = ClassificationLayer(config, self.label_embedding_layer)
 
-    def forward(self, tokenized):
-        deep_features = self.sequence_feature_extract_layer(tokenized)
+    def forward(self, input_ids, attention_mask, token_type_ids):
+        deep_features = self.sequence_feature_extract_layer(input_ids, attention_mask, token_type_ids)
         features = self.attention_layer(deep_features, self.label_embedding_layer)
         # shape of features(bsz, label_embedding_dim) eg:(32, 768)
 
