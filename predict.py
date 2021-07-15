@@ -1,3 +1,5 @@
+# 模型预测接口
+
 import torch
 import yaml
 from model import Model

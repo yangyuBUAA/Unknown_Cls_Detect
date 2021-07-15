@@ -1820,7 +1820,7 @@ class BertForQuestionAnswering(BertPreTrainedModel):
             attentions=outputs.attentions,
         )
 
-
+# 修改后的bert embedding层，去掉了pooling和ln层
 class BertEmbeddingsModified(nn.Module):
     """Construct the embeddings from word, position and token_type embeddings."""
 
@@ -1868,7 +1868,7 @@ class BertEmbeddingsModified(nn.Module):
         # embeddings = self.dropout(embeddings)
         return embeddings
 
-
+# 修改后的bertmodel，模型通过bert embedding层后直接返回embedding层，不再通过bertencoder
 class BertModelModified(BertPreTrainedModel):
     """
 
