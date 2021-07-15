@@ -104,12 +104,19 @@ class AttentionLayer(torch.nn.Module):
         self.max_pool1d = torch.nn.MaxPool1d(kernel_size=3)
         self.softmax = torch.nn.Softmax(dim=1)
 
-    def forward(self, deep_features, label_embeddings):
+    def forward(self, deep_features, label_embeddings, attention_mask):
         # deep_features (bsz, max_seq_len, hidden_dim)
         # label_embeddings (bert_embedding_dim, label_nums)
         deep_features_normalized = F.normalize(deep_features, dim=-1)
         label_embeddings_normalized = F.normalize(label_embeddings, dim=0)
         atten = torch.matmul(deep_features_normalized, label_embeddings_normalized)
+
+        # 修复attention为遮挡padding的问题
+        ones = torch.ones_like(attention_mask)
+        reverse = 10000 * (attention_mask - ones)
+        reverse = reverse.unsqueeze(-1).repeat(1, 1, label_embeddings.shape[1]) # (batch_size, max_seq_len, label_nums)
+        atten = atten + reverse
+        
         # print(atten)
         pooled = self.max_pool1d(atten).squeeze()
         # (bsz, seq_len)
@@ -186,7 +193,7 @@ class Model(torch.nn.Module):
 
     def forward(self, input_ids, attention_mask, token_type_ids):
         deep_features = self.sequence_feature_extract_layer(input_ids, attention_mask, token_type_ids)
-        features, atten, normalized = self.attention_layer(deep_features, self.label_embedding_layer)
+        features, atten, normalized = self.attention_layer(deep_features, self.label_embedding_layer, attention_mask)
         # shape of features(bsz, label_embedding_dim) eg:(32, 768)
         logits = self.classification_layer(features)
         label_features = self.label_embedding_layer.clone().detach()
