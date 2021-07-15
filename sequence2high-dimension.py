@@ -17,11 +17,12 @@ from transformers_model.models.bert.tokenization_bert import BertTokenizer
 def analysis(config):
     model = Model(config)
     model.load_state_dict(torch.load("checkpoint/checkpoint-epoch1-batch3000.bin"))
-    model.load_state_dict(torch.load("checkpointv2/checkpoint-epoch0-batch3000.bin"))
+    model.load_state_dict(torch.load("checkpointv2/checkpoint-epoch0-batch2000.bin"))
     tokenizer = BertTokenizer.from_pretrained("huggingface_pretrained_model/bert-base-chinese")
 
-    sentence = ["淮安创业开公司流程", "征信不好买车以租代购可靠吗"]
+    sentence = ["淮安创业开公司流程", "征信不好买车以租代购可靠吗", "买车以租代购可靠吗"]
     tokenized = tokenizer(sentence, return_tensors="pt", truncation=True, max_length=20, padding="max_length")
+    
     input_ids = tokenized["input_ids"]
     print(input_ids)
     attention_mask = tokenized["attention_mask"]
@@ -33,7 +34,7 @@ def analysis(config):
     print(output.attention_normalized)
     print(cosine_distance(output.features_after_attention, output.label_features))
     print(euclidean_distance(output.features_after_attention, output.label_features))
-
+    
 def euclidean_distance(model_output_features, label_embedding_features):
     """计算向量之间的欧几里得距离
 
