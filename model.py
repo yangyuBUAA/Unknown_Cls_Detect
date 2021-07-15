@@ -185,17 +185,9 @@ class Model(torch.nn.Module):
 
     def forward(self, input_ids, attention_mask, token_type_ids):
         deep_features = self.sequence_feature_extract_layer(input_ids, attention_mask, token_type_ids)
-        features = self.attention_layer(deep_features, self.label_embedding_layer)
+        features, atten, normalized = self.attention_layer(deep_features, self.label_embedding_layer)
         # shape of features(bsz, label_embedding_dim) eg:(32, 768)
+        logits = self.classification_layer(features)
+        return logits, features, atten, normalized
 
-        return self.classification_layer(features)
 
-
-if __name__ == '__main__':
-    f = open(r'config.yaml', 'r', encoding='utf-8')
-    result = f.read()
-    config = yaml.load(result)
-    model = Model(config)
-    tokenizer = BertTokenizer.from_pretrained("huggingface_pretrained_model/bert-base-chinese")
-    tokenized = tokenizer(["今天天气怎么样", "明天天气怎么样"], return_tensors="pt", truncation=True, padding="max_length", max_length=64)
-    print(model(tokenized))
