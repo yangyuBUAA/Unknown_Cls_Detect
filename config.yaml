@@ -3,7 +3,7 @@ TRAIN_DIR: "data/train/train.txt"
 EVAL_DIR: "data/eval/eval.txt"
 TEST_DIR: "data/test/test.txt"
 
-checkpoint_path: "checkpoint/"
+checkpoint_path: "checkpointv2/"
 
 categories:
   - 软件开发

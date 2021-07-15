@@ -7,7 +7,7 @@ logging.basicConfig(level = logging.INFO, format='%(asctime)s - %(levelname)s - 
 logger = logging.getLogger(__name__)
 
 from tqdm import tqdm
-from model import Model
+from model import Model, LargeMarginCosineLoss
 from dataset import LEDataset
 from transformers_model.models.bert.tokenization_bert import BertTokenizer
 from torch.utils.data import DataLoader
@@ -24,7 +24,9 @@ def train(config):
     logger.info("加载模型...")
     model = Model(config)
     if config["use_cuda"] and torch.cuda.is_available():
+        # model = torch.nn.DataParallel(model)
         model = model.cuda()
+        # model = torch.nn.parallel.DistributedDataParallel(model)
     logger.info("加载模型完成...")
     train_dataloader = DataLoader(dataset=train_set, batch_size=config["batch_size"], shuffle=True)
     eval_dataloader = DataLoader(dataset=eval_set, batch_size=config["batch_size"], shuffle=True)
@@ -54,7 +56,9 @@ def train(config):
                 input_ids.cuda(), attention_mask.cuda(), token_type_ids.cuda()
                 label = label.cuda()
             model_output = model(input_ids, attention_mask, token_type_ids)
-            train_loss = cross_entropy(model_output, label)
+            model_output = model_output.logits
+            lmcl = LargeMarginCosineLoss()
+            train_loss = lmcl(model_output, label)
             train_loss.backward()
             optimizer.step()
 
@@ -89,7 +93,9 @@ def evaluate(config, model, eval_dataloader):
             input_ids.cuda(), attention_mask.cuda(), token_type_ids.cuda()
             label = label.cuda()
         model_output = model(input_ids, attention_mask, token_type_ids)
-        eval_loss = cross_entropy(model_output, label)
+        model_output = model_output.logits
+        lmcl = LargeMarginCosineLoss()
+        eval_loss = lmcl(model_output, label)
         loss_sum = loss_sum + eval_loss.item()
 
         pred = torch.argmax(model_output, dim=1)

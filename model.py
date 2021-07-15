@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from torch.nn import CrossEntropyLoss
 import yaml
 # BertModelModified是使用了BertEmbeddingsModified进行embedding的bert，同时将返回数据置为embedding，用于读取预训练embedding层的输出
 from transformers_model.models.bert.modeling_bert import BertModel, BertModelModified
@@ -13,7 +14,7 @@ class FeatureExtractLayer(torch.nn.Module):
     Attributes:
         config: 配置
         bert_model: 读取的预训练模型
-
+    
     """
     def __init__(self, config):
         super(FeatureExtractLayer, self).__init__()
@@ -188,6 +189,48 @@ class Model(torch.nn.Module):
         features, atten, normalized = self.attention_layer(deep_features, self.label_embedding_layer)
         # shape of features(bsz, label_embedding_dim) eg:(32, 768)
         logits = self.classification_layer(features)
-        return logits, features, atten, normalized
+        label_features = self.label_embedding_layer.clone().detach()
+        return ModelOutput(logits, features, atten, normalized, label_features)
 
 
+class ModelOutput:
+    def __init__(self, logits, features, atten, normalized, label_features):
+        self.logits = logits
+        self.features_after_attention = features
+        self.attention_raw = atten
+        self.attention_normalized = normalized
+        self.label_features = label_features
+
+
+class LargeMarginCosineLoss(torch.nn.Module):
+    """
+    Softmax and sigmoid focal loss
+    """
+
+    def __init__(self, num_labels=3,  scale=30, margin=0.35,activation_type='softmax'):
+
+        super(LargeMarginCosineLoss, self).__init__()
+        self.num_labels = num_labels
+        self.scale = scale
+        self.margin = margin
+        self.activation_type = activation_type
+
+    def forward(self, input, target):
+        """
+        Args:
+            logits: model's output, shape of [batch_size, num_cls]
+            target: ground truth labels, shape of [batch_size]
+        Returns:
+            
+        """
+        if self.activation_type == 'softmax':
+            logits = F.softmax(input, dim=-1)
+        elif self.activation_type == 'sigmoid':
+            logits = F.sigmoid(input)
+        y_true = F.one_hot(target, self.num_labels)
+        y_pred = y_true * (logits - self.margin) + (1 - y_true) * logits
+        y_pred *= self.scale
+        loss_fct = CrossEntropyLoss()
+        loss = loss_fct(y_pred.view(-1, self.num_labels), target.view(-1))
+
+        return loss
