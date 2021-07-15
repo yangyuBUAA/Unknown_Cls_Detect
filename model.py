@@ -8,6 +8,13 @@ from transformers_model.models.bert.tokenization_bert import BertTokenizer
 
 # 使用bert抽取特征，返回最后一层的hidden state作为对每个token的encoder
 class FeatureExtractLayer(torch.nn.Module):
+    """加载预训练bert，使用bert抽取sequence特征，将last_hidden_state进行输出
+
+    Attributes:
+        config: 配置
+        bert_model: 读取的预训练模型
+
+    """
     def __init__(self, config):
         super(FeatureExtractLayer, self).__init__()
         self.config = config
@@ -20,6 +27,12 @@ class FeatureExtractLayer(torch.nn.Module):
 
 # 使用bert的embedding层对每个label进行初始的embedding
 class LabelEmbedding(torch.nn.Module):
+    """使用bert预训练的embedding对每个label进行初始的embedding
+
+    Attributes:
+        config: 配置
+        bert_model_modified: 修改后的bert模型，此模型返回embedding层的编码，源码位置与BertModel相同
+    """
     def __init__(self, config):
         super(LabelEmbedding, self).__init__()
         self.config = config
@@ -30,8 +43,19 @@ class LabelEmbedding(torch.nn.Module):
         return embedding_layer
 
 
-# 获取类别的embedding并构成labelembedding层
 class LabelEmbeddingLayer(torch.nn.Module):
+    """将LabelEmbedding类提取的每个类别的embedding特征进行整合
+
+    整合为(label nums, bert_embedding_dim)的tensor
+
+    Attributes:
+        config: 配置
+        label_embedding: LabelEmbedding类，用于提取每个类别对应的embedding特征
+        categories: 存放分类的类别标签
+        tokenizer: bert的tokenizer
+        label_embedded: 存放每个类别标签对应的初始化label embedding
+        label_embedding_layer_params: 将每个类别标签对应的初始化的label embedding tensor拼接
+    """
     def __init__(self, config):
         super(LabelEmbeddingLayer, self).__init__()
         self.config = config
@@ -63,6 +87,16 @@ class LabelEmbeddingLayerWithParametersShare(torch.nn.Module):
 
 
 class AttentionLayer(torch.nn.Module):
+    """计算bert输出特征和label embedding的attention
+
+    Longer class information....
+
+    Attributes:
+        config: 配置
+        max_pool1d: 使用torch的MaxPool1d用来过滤特征
+        softmax: 使用torch提供的softmax进行特征归一化
+    """
+
     def __init__(self, config):
         super(AttentionLayer, self).__init__()
         self.config = config
@@ -82,7 +116,7 @@ class AttentionLayer(torch.nn.Module):
         # print(normalized.shape)
         feature_attention = torch.matmul(normalized, deep_features).squeeze()
         # (bsz, label_embedding_dim)
-        return feature_attention
+        return feature_attention, atten, normalized
 
 
 class AjustiveAttentionLayer(torch.nn.Module):
@@ -93,6 +127,15 @@ class AjustiveAttentionLayer(torch.nn.Module):
 
 # 分类层，输出为logits，后面可以接单标签分类或者多标签分类的loss function
 class ClassificationLayer(torch.nn.Module):
+    """分类层，将attention后的特征通过全连接层进行分类
+
+    全连接层的参数与label embedidng矩阵参数共享，bias为0
+
+    Attributes:
+        config: 配置
+        weight_matrix_params: 实例化时传入label embedding矩阵
+
+    """
     def __init__(self, config, weight_matrix_params):
         super(ClassificationLayer, self).__init__()
         self.config = config
@@ -114,6 +157,19 @@ class LMCLossLayer(torch.nn.Module):
 
 
 class Model(torch.nn.Module):
+    """bert+由bert embedding初始化的可学习的label embedding+与label embedding权重共享的分类层模型
+
+    模型需要根据配置进行初始化，配置中需要写入类别标签或者类别相关进行进行label embedidng的初始化
+    模型返回为logits，可以使用CrossEntropy进行优化，或者softmax + nlloss
+
+    Attributes:
+        config: 配置
+        sequence_feature_extract_layer: sequence特征抽取层，bert，但只返回bert的last_hidden_state
+        label_embedding_layer: 初始化label embedidng，将其封装为可学习参数
+        attention_layer: 计算bert输出last_hidden_state与label embedding的attention值，无可学习参数
+        classification_layer: 分类层，与label embedding参数共享，为可学习参数
+
+    """
     def __init__(self, config):
         super(Model, self).__init__()
         self.config = config
