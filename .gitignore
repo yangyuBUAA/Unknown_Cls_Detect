@@ -1,3 +1,4 @@
 huggingface_pretrained_model/bert-base-chinese/
 *.bin
 *.log
+*.jpg
