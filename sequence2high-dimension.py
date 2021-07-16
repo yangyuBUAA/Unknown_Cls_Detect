@@ -5,7 +5,7 @@
 3.每条数据中的每个token针对每个label的的attention score
 '''
 
-
+import pickle
 import torch
 import torch.nn.functional as F
 import yaml
@@ -30,12 +30,14 @@ def analysis(config):
     token_type_ids = tokenized["token_type_ids"]
 
     output = model(input_ids, attention_mask, token_type_ids)
-    print(output.logits)
-    print(output.attention_raw)
-    print(output.attention_normalized)
+    print(output.logits)  # 模型输出的logits [batch_size, label_nums]
+    print(output.attention_raw)  # 模型输出的每个token对每个label的attention，[batch_size, seq_len, label_nums]
+    print(output.attention_normalized)  # [batch_size, 1, seq_len]
     print(cosine_distance(output.features_after_attention, output.label_features))
     print(euclidean_distance(output.features_after_attention, output.label_features))
     
+    store(sentence, config["categories"], output.attention_raw, output.attention_normalized)
+
 def euclidean_distance(model_output_features, label_embedding_features):
     """计算向量之间的欧几里得距离
 
@@ -101,6 +103,13 @@ def cosine_distance(model_output_features, label_embedding_features):
     return return_tensor
     
 
+def store(sentences, labels, attention_raw, attention_cls):
+    """存储模型输出信息用于可视化分析
+
+    将训练好的模型输出数据进行存储
+
+    """
+    torch.save([sentences, labels, attention_raw, attention_cls], "analysis_data/data.bin")
 
 if __name__=="__main__":
     with open(r'config.yaml', 'r', encoding='utf-8') as f:
