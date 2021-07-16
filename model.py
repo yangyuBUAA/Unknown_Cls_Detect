@@ -14,8 +14,9 @@ class FeatureExtractLayer(torch.nn.Module):
     Attributes:
         config: 配置
         bert_model: 读取的预训练模型
-    
+
     """
+
     def __init__(self, config):
         super(FeatureExtractLayer, self).__init__()
         self.config = config
@@ -34,13 +35,15 @@ class LabelEmbedding(torch.nn.Module):
         config: 配置
         bert_model_modified: 修改后的bert模型，此模型返回embedding层的编码，源码位置与BertModel相同
     """
+
     def __init__(self, config):
         super(LabelEmbedding, self).__init__()
         self.config = config
         self.bert_model_modified = BertModelModified.from_pretrained(self.config["bert_model_path"])
 
     def forward(self, tokenized):
-        embedding_layer = self.bert_model_modified(tokenized["input_ids"], tokenized["attention_mask"], tokenized["token_type_ids"])
+        embedding_layer = self.bert_model_modified(tokenized["input_ids"], tokenized["attention_mask"],
+                                                   tokenized["token_type_ids"])
         return embedding_layer
 
 
@@ -57,6 +60,7 @@ class LabelEmbeddingLayer(torch.nn.Module):
         label_embedded: 存放每个类别标签对应的初始化label embedding
         label_embedding_layer_params: 将每个类别标签对应的初始化的label embedding tensor拼接
     """
+
     def __init__(self, config):
         super(LabelEmbeddingLayer, self).__init__()
         self.config = config
@@ -70,7 +74,7 @@ class LabelEmbeddingLayer(torch.nn.Module):
             attention_mask_list_sum = sum(tokenized["attention_mask"].squeeze().numpy().tolist())
             # print(attention_mask_list_sum)
             # print(embedded.shape, tokenized["attention_mask"])
-            embedded_meaningful = embedded[1:attention_mask_list_sum-1, :]
+            embedded_meaningful = embedded[1:attention_mask_list_sum - 1, :]
             # print(embedded_meaningful.shape)
             one_label_embedding = torch.sum(embedded_meaningful, dim=0).unsqueeze(0)
             # print(embedding.shape)
@@ -80,11 +84,11 @@ class LabelEmbeddingLayer(torch.nn.Module):
         self.label_embedding_layer_params = torch.cat(self.label_embedded, dim=0).permute(1, 0)
 
 
-
 class LabelEmbeddingLayerWithParametersShare(torch.nn.Module):
     def __init__(self, config):
         super(LabelEmbeddingLayerWithParametersShare, self).__init__()
         self.config = config
+
 
 # 是否能将attention score叠加 而不是取最大
 class AttentionLayer(torch.nn.Module):
@@ -114,10 +118,10 @@ class AttentionLayer(torch.nn.Module):
         # 修复attention为遮挡padding的问题
         ones = torch.ones_like(attention_mask)
         reverse = 10000 * (attention_mask - ones)
-        reverse = reverse.unsqueeze(-1).repeat(1, 1, label_embeddings.shape[1]) # (batch_size, max_seq_len, label_nums)
+        reverse = reverse.unsqueeze(-1).repeat(1, 1, label_embeddings.shape[1])  # (batch_size, max_seq_len, label_nums)
         atten = atten + reverse
-        
-        atten = 100 * atten
+
+        # atten = 100 * atten
 
         # print(atten)
         pooled = self.max_pool1d(atten).squeeze()
@@ -146,6 +150,7 @@ class ClassificationLayer(torch.nn.Module):
         weight_matrix_params: 实例化时传入label embedding矩阵
 
     """
+
     def __init__(self, config, weight_matrix_params):
         super(ClassificationLayer, self).__init__()
         self.config = config
@@ -180,6 +185,7 @@ class Model(torch.nn.Module):
         classification_layer: 分类层，与label embedding参数共享，为可学习参数
 
     """
+
     def __init__(self, config):
         super(Model, self).__init__()
         self.config = config
@@ -187,9 +193,11 @@ class Model(torch.nn.Module):
         self.sequence_feature_extract_layer = FeatureExtractLayer(config)
 
         # 将label embedding设置为可学习参数，维度为（bert_hidden_dim, label_nums）
-        self.label_embedding_layer = torch.nn.Parameter(LabelEmbeddingLayer(config).label_embedding_layer_params, requires_grad=True)
+        self.label_embedding_layer = torch.nn.Parameter(LabelEmbeddingLayer(config).label_embedding_layer_params,
+                                                        requires_grad=True)
 
-        self.attention_layer = AjustiveAttentionLayer(config) if config["use_ajustive_attention"] else AttentionLayer(config)
+        self.attention_layer = AjustiveAttentionLayer(config) if config["use_ajustive_attention"] else AttentionLayer(
+            config)
 
         self.classification_layer = ClassificationLayer(config, self.label_embedding_layer)
 
@@ -216,7 +224,7 @@ class LargeMarginCosineLoss(torch.nn.Module):
     Softmax and sigmoid focal loss
     """
 
-    def __init__(self, num_labels=3,  scale=30, margin=0.35,activation_type='softmax'):
+    def __init__(self, num_labels=3, scale=30, margin=0.35, activation_type='softmax'):
 
         super(LargeMarginCosineLoss, self).__init__()
         self.num_labels = num_labels
@@ -230,7 +238,7 @@ class LargeMarginCosineLoss(torch.nn.Module):
             logits: model's output, shape of [batch_size, num_cls]
             target: ground truth labels, shape of [batch_size]
         Returns:
-            
+
         """
         if self.activation_type == 'softmax':
             logits = F.softmax(input, dim=-1)
