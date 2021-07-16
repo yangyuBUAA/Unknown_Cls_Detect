@@ -86,7 +86,7 @@ class LabelEmbeddingLayerWithParametersShare(torch.nn.Module):
         super(LabelEmbeddingLayerWithParametersShare, self).__init__()
         self.config = config
 
-
+# 是否能将attention score叠加 而不是取最大
 class AttentionLayer(torch.nn.Module):
     """计算bert输出特征和label embedding的attention
 
@@ -117,6 +117,8 @@ class AttentionLayer(torch.nn.Module):
         reverse = reverse.unsqueeze(-1).repeat(1, 1, label_embeddings.shape[1]) # (batch_size, max_seq_len, label_nums)
         atten = atten + reverse
         
+        atten = 100 * atten
+
         # print(atten)
         pooled = self.max_pool1d(atten).squeeze()
         # (bsz, seq_len)

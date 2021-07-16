@@ -18,9 +18,10 @@ def analysis(config):
     model = Model(config)
     model.load_state_dict(torch.load("checkpoint/checkpoint-epoch1-batch3000.bin"))
     model.load_state_dict(torch.load("checkpointv2/checkpoint-epoch0-batch2000.bin"))
+    model.eval()
     tokenizer = BertTokenizer.from_pretrained("huggingface_pretrained_model/bert-base-chinese")
 
-    sentence = ["淮安创业开公司流程", "征信不好买车以租代购可靠吗", "买车以租代购可靠吗"]
+    sentence = ["淮安创业开公司流程", "征信不好买车以租代购可靠吗", "今天天气好买车吗", "天气", "盐城晋安怎么注册营业执照"]
     tokenized = tokenizer(sentence, return_tensors="pt", truncation=True, max_length=20, padding="max_length")
     
     input_ids = tokenized["input_ids"]
