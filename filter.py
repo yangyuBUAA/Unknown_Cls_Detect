@@ -1,3 +1,7 @@
+"""
+使用bert+label embedding+权重共享+lmcl进行未知意图识别
+"""
+
 import pickle
 import torch
 import torch.nn.functional as F
