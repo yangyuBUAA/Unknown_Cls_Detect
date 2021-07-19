@@ -3,6 +3,7 @@
 1.每条数据的高维特征
 2.每个类别的label embedding特征
 3.每条数据中的每个token针对每个label的的attention score
+4.每条数据对于分类的attention score
 '''
 
 import pickle
@@ -15,6 +16,11 @@ from transformers_model.models.bert.tokenization_bert import BertTokenizer
 
 
 def analysis(config):
+    """分析模型的效果
+
+    输出模型分析所需要的数据，进行打印和存储，用于下一步分析
+
+    """
     model = Model(config)
     model.load_state_dict(torch.load("checkpoint/checkpoint-epoch1-batch3000.bin"))
     model.load_state_dict(torch.load("checkpointv2/checkpoint-epoch0-batch2000.bin"))
@@ -29,13 +35,17 @@ def analysis(config):
     attention_mask = tokenized["attention_mask"]
     token_type_ids = tokenized["token_type_ids"]
 
+    # 模型推理以及输出
     output = model(input_ids, attention_mask, token_type_ids)
     print(output.logits)  # 模型输出的logits [batch_size, label_nums]
-    print(output.attention_raw)  # 模型输出的每个token对每个label的attention，[batch_size, seq_len, label_nums]
-    print(output.attention_normalized)  # [batch_size, 1, seq_len]
+    print(output.attention_raw)  # 模型输出的每个token对每个label的attention score，[batch_size, seq_len, label_nums]
+    print(output.attention_normalized)  # 模型输出的每条数据对于分类的attention score[batch_size, 1, seq_len]
+
+    # 计算余弦距离和欧氏距离
     print(cosine_distance(output.features_after_attention, output.label_features))
     print(euclidean_distance(output.features_after_attention, output.label_features))
     
+    # 将特征进行存储，使用heatmap.py进行可视化分析
     store(sentence, config["categories"], output.attention_raw, output.attention_normalized)
 
 def euclidean_distance(model_output_features, label_embedding_features):
