@@ -1,5 +1,5 @@
 """
-使用bert+label embedding+权重共享+lmcl进行未知意图识别
+使用bert+label embedding+权重共享+lmcl进行未知意图识别（异常检测）
 """
 
 import pickle
