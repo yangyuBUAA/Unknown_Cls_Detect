@@ -1,3 +1,7 @@
+"""
+模型的输入数据类，继承自torch.utils.data.Dataset
+"""
+
 import torch
 from torch.utils.data import Dataset
 
