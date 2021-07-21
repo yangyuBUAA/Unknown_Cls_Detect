@@ -1,14 +1,27 @@
 CURRENT_DIR: "/home/yangyu/unknown_cls_detect/"
-TRAIN_DIR: "data/train/train.txt"
-EVAL_DIR: "data/eval/eval.txt"
+TRAIN_DIR: "data/train/train_label.txt"
+EVAL_DIR: "data/eval/eval_label.txt"
 TEST_DIR: "data/test/test.txt"
+
+# TRAIN_DIR: "data/test/test.txt"
+# EVAL_DIR: "data/test/test.txt"
+# TEST_DIR: "data/test/test.txt"
+
+train_split: False   # 设置训练数据是否分片
+split_nums: 10   # 设置分片数量
 
 checkpoint_path: "checkpointv2/"
 
 categories:
-  - 软件开发
+  - 游戏开发
   - 会计审计
-  - 汽车销售
+  - 软件开发
+  - 传统文化
+  - 餐饮加盟
+  - 棋牌开发
+  - 拒绝
+  - 视频直播
+  - 招商平台
 
 use_cuda: True
 
