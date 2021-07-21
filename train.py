@@ -10,6 +10,7 @@ from tqdm import tqdm
 from model import Model, LargeMarginCosineLoss
 from dataset import LEDataset
 from transformers_model.models.bert.tokenization_bert import BertTokenizer
+from transformers_model.models.bert.tokenization_bert_fast import BertTokenizerFast
 from torch.utils.data import DataLoader
 
 from torch.optim import AdamW
@@ -20,7 +21,7 @@ def train(config):
 
     CURRENT_DIR = config["CURRENT_DIR"]
 
-    train_set, eval_set, test_set = load_dataset(config)
+    train_set, eval_set = load_dataset(config)
     logger.info("加载模型...")
     model = Model(config)
     if config["use_cuda"] and torch.cuda.is_available():
@@ -30,16 +31,16 @@ def train(config):
     logger.info("加载模型完成...")
     train_dataloader = DataLoader(dataset=train_set, batch_size=config["batch_size"], shuffle=True)
     eval_dataloader = DataLoader(dataset=eval_set, batch_size=config["batch_size"], shuffle=True)
-    test_dataloader = DataLoader(dataset=test_set, batch_size=config["batch_size"], shuffle=True)
+    # test_dataloader = DataLoader(dataset=test_set, batch_size=config["batch_size"], shuffle=True)
 
     optimizer = AdamW(model.parameters(), config["LR"])
     # scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
 
     # Train!
     logger.info("***** Running training *****")
-    logger.info("  Num train examples = %d", len(train_dataloader)*config["batch_size"])
-    logger.info("  Num eval examples = %d", len(eval_dataloader)*config["batch_size"])
-    logger.info("  Num test examples = %d", len(test_dataloader)*config["batch_size"])
+    logger.info("  Num train examples = %d", len(train_set))
+    logger.info("  Num eval examples = %d", len(eval_set))
+    # logger.info("  Num test examples = %d", len(test_dataloader)*config["batch_size"])
     logger.info("  Num Epochs = %d", config["EPOCH"])
     logger.info("  Learning rate = %d", config["LR"])
 
@@ -82,7 +83,8 @@ def evaluate(config, model, eval_dataloader):
     correct = torch.zeros(1).squeeze().cuda()
     total = torch.zeros(1).squeeze().cuda()
     # 创建混淆矩阵
-    confuse_matrix = np.zeros((3, 3))
+    cls_nums = len(config["categories"])
+    confuse_matrix = np.zeros((cls_nums, cls_nums))
 
     for index, batch in enumerate(eval_dataloader):
         input_ids, attention_mask, token_type_ids = \
@@ -108,38 +110,64 @@ def evaluate(config, model, eval_dataloader):
     logger.info("eval loss: {}".format(str(loss_sum / (len(eval_dataloader)))))
     logger.info("eval accu: {}".format(str((correct/total).cpu().detach().data.numpy())))
     logger.info("confuse_matrix:")
-    
-    logger.info("{}   |   {}   |   {}".format(str(confuse_matrix[0][0]), str(confuse_matrix[0][1]), str(confuse_matrix[0][2])))
-    logger.info("{}   |   {}   |   {}".format(str(confuse_matrix[1][0]), str(confuse_matrix[1][1]), str(confuse_matrix[1][2])))
-    logger.info("{}   |   {}   |   {}".format(str(confuse_matrix[2][0]), str(confuse_matrix[2][1]), str(confuse_matrix[2][2])))
+    for i in range(cls_nums):
+        strs = config["categories"][i]
+        for j in range(cls_nums):
+            strs = strs + str(confuse_matrix[i][j]) + " |"
+        logger.info(strs)
 
-    logger.info("软件开发 精度 {} 召回率 {}".format(str(confuse_matrix[0][0] / (confuse_matrix[0][0] + confuse_matrix[1][0] + confuse_matrix[2][0])), str(confuse_matrix[0][0] / (confuse_matrix[0][0] + confuse_matrix[0][1] + confuse_matrix[0][2]))))
-    logger.info("会计审计 精度 {} 召回率 {}".format(str(confuse_matrix[1][1] / (confuse_matrix[1][1] + confuse_matrix[0][1] + confuse_matrix[2][1])), str(confuse_matrix[1][1] / (confuse_matrix[1][1] + confuse_matrix[1][0] + confuse_matrix[1][2]))))
-    logger.info("汽车销售 精度 {} 召回率 {}".format(str(confuse_matrix[2][2] / (confuse_matrix[2][2] + confuse_matrix[0][2] + confuse_matrix[1][2])), str(confuse_matrix[2][2] / (confuse_matrix[2][2] + confuse_matrix[2][0] + confuse_matrix[2][1]))))
+    # logger.info("{}   |   {}   |   {}".format(str(confuse_matrix[0][0]), str(confuse_matrix[0][1]), str(confuse_matrix[0][2])))
+    # logger.info("{}   |   {}   |   {}".format(str(confuse_matrix[1][0]), str(confuse_matrix[1][1]), str(confuse_matrix[1][2])))
+    # logger.info("{}   |   {}   |   {}".format(str(confuse_matrix[2][0]), str(confuse_matrix[2][1]), str(confuse_matrix[2][2])))
 
-    
+    for i in range(cls_nums):
+        strs = config["categories"][i]
+        p, r = 0, 0
+        for j in range(cls_nums):
+            p = p + confuse_matrix[j][i]
+            r = r + confuse_matrix[i][j]
+        strs = strs + " 精度 {}".format(str(confuse_matrix[i][i]/p)) + " 召回率 {}".format(str(confuse_matrix[i][i]/r))
+        logger.info(strs)
+    # logger.info("软件开发 精度 {} 召回率 {}".format(str(confuse_matrix[0][0] / (confuse_matrix[0][0] + confuse_matrix[1][0] + confuse_matrix[2][0])), str(confuse_matrix[0][0] / (confuse_matrix[0][0] + confuse_matrix[0][1] + confuse_matrix[0][2]))))
+    # logger.info("会计审计 精度 {} 召回率 {}".format(str(confuse_matrix[1][1] / (confuse_matrix[1][1] + confuse_matrix[0][1] + confuse_matrix[2][1])), str(confuse_matrix[1][1] / (confuse_matrix[1][1] + confuse_matrix[1][0] + confuse_matrix[1][2]))))
+    # logger.info("汽车销售 精度 {} 召回率 {}".format(str(confuse_matrix[2][2] / (confuse_matrix[2][2] + confuse_matrix[0][2] + confuse_matrix[1][2])), str(confuse_matrix[2][2] / (confuse_matrix[2][2] + confuse_matrix[2][0] + confuse_matrix[2][1]))))
 
 
 def load_dataset(config):
     CURRENTDIR = config["CURRENT_DIR"]
-    # TRAIN_CACHED_PATH = os.path.join(CURRENTDIR, "data/train/train_cached.bin")
-    # EVAL_CACHED_PATH = os.path.join(CURRENTDIR, "data/eval/eval_cached.bin")
+    TRAIN_CACHED_PATH = os.path.join(CURRENTDIR, "data/train/train_cached.bin")
+    EVAL_CACHED_PATH = os.path.join(CURRENTDIR, "data/eval/eval_cached.bin")
     # TEST_CACHED_PATH = os.path.join(CURRENTDIR, "data/test/test_cached.bin")
-    #
-    # if os.path.exists(TEST_CACHED_PATH):
-    #     torch.load()
 
-    TRAIN_SOURCE_PATH = os.path.join(CURRENTDIR, config["TRAIN_DIR"])
-    EVAL_SOURCE_PATH = os.path.join(CURRENTDIR, config["EVAL_DIR"])
-    TEST_SOURCE_PATH = os.path.join(CURRENTDIR, config["TEST_DIR"])
 
-    tokenizer = BertTokenizer.from_pretrained(config["bert_model_path"])
-    logger.info("构建数据集...")
-    train_set = construct_dataset(tokenizer, TRAIN_SOURCE_PATH)
-    eval_set = construct_dataset(tokenizer, EVAL_SOURCE_PATH)
-    test_set = construct_dataset(tokenizer, TEST_SOURCE_PATH)
-    logger.info("构建完成...训练集{}条数据，验证集{}条数据，测试集{}条数据...".format(len(train_set), len(eval_set), len(test_set)))
-    return train_set, eval_set, test_set
+    if os.path.exists(TRAIN_CACHED_PATH):
+        logger.info("训练集cache文件存在，读取数据集...")
+        train_set = torch.load(TRAIN_CACHED_PATH)
+    else:
+        logger.info("训练集cache文件不存在，构建数据集...")
+        tokenizer = BertTokenizerFast.from_pretrained(config["bert_model_path"])
+        TRAIN_SOURCE_PATH = os.path.join(CURRENTDIR, config["TRAIN_DIR"])
+        train_set = construct_dataset(tokenizer, TRAIN_SOURCE_PATH)
+        logger.info("训练集构建完成，保存cache文件...")
+        torch.save(train_set, "data/train/train_cached.bin")
+        logger.info("保存cache文件完成...")
+
+    if os.path.exists(EVAL_CACHED_PATH):
+        logger.info("验证集cache文件存在，读取数据集...")
+        eval_set = torch.load(EVAL_CACHED_PATH)
+    else:
+        logger.info("验证集cache文件不存在，构建数据集...")
+        tokenizer = BertTokenizerFast.from_pretrained(config["bert_model_path"])
+        TRAIN_SOURCE_PATH = os.path.join(CURRENTDIR, config["EVAL_DIR"])
+        eval_set = construct_dataset(tokenizer, TRAIN_SOURCE_PATH)
+        logger.info("验证集构建完成，保存cache文件...")
+        torch.save(eval_set, "data/eval/eval_cached.bin")
+        logger.info("保存cache文件完成...")
+        
+    
+
+    logger.info("保存完成...训练集{}条数据，验证集{}条数据，测试集{}条数据...".format(len(train_set), len(eval_set), str(0)))
+    return train_set, eval_set
 
 
 def construct_dataset(tokenizer, SOURCE_PATH):
@@ -147,16 +175,22 @@ def construct_dataset(tokenizer, SOURCE_PATH):
     label_list = list()
     with open(SOURCE_PATH, "r", encoding="utf-8") as train_set:
         data = train_set.readlines()
+        i = 10000000
         for line in tqdm(data):
             line = line.strip()
-            sequence, label = line[:-2], line[-1]
+            sequence, label = line[:-2].strip(), line[-1]
+            # print(sequence)
+            # print(len(sequence))
             # print(sequence, label)
             # break
             sequence_tokenized = tokenizer(sequence, return_tensors="pt", max_length=20, padding="max_length",
                                            truncation=True)
+            # print(sequence_tokenized)
             tokenized_list.append(sequence_tokenized)
             label_list.append(label)
-
+            i = i - 1
+            if i < 0:
+                break
     return LEDataset(tokenized_list, label_list)
 
 
