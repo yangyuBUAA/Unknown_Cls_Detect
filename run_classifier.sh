@@ -1,1 +1,1 @@
-nohup python train.py > train_v3.log &
+nohup python train_multi_gpu.py > train_v101.log &
