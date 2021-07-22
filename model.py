@@ -105,10 +105,11 @@ class AttentionLayer(torch.nn.Module):
     def __init__(self, config):
         super(AttentionLayer, self).__init__()
         self.config = config
-        self.max_pool1d = torch.nn.MaxPool1d(kernel_size=3)
+        self.max_pool1d = torch.nn.MaxPool1d(kernel_size=9)
         self.softmax = torch.nn.Softmax(dim=1)
 
     def forward(self, deep_features, label_embeddings, attention_mask):
+        # print(deep_features.shape, label_embeddings.shape)
         # deep_features (bsz, max_seq_len, hidden_dim)
         # label_embeddings (bert_embedding_dim, label_nums)
         deep_features_normalized = F.normalize(deep_features, dim=-1)
@@ -123,11 +124,13 @@ class AttentionLayer(torch.nn.Module):
 
         # atten = 100 * atten
 
-        # print(atten)
+        # print(atten.shape)
         pooled = self.max_pool1d(atten).squeeze()
+        # print(pooled.shape)
         # (bsz, seq_len)
         normalized = self.softmax(pooled).unsqueeze(1)
         # print(normalized.shape)
+        # print(deep_features.shape)
         feature_attention = torch.matmul(normalized, deep_features).squeeze()
         # (bsz, label_embedding_dim)
         return feature_attention, atten, normalized
@@ -207,7 +210,9 @@ class Model(torch.nn.Module):
         # shape of features(bsz, label_embedding_dim) eg:(32, 768)
         logits = self.classification_layer(features)
         label_features = self.label_embedding_layer.clone().detach()
-        return ModelOutput(logits, features, atten, normalized, label_features)
+        # print(logits.shape)
+        # return ModelOutput(logits, features, atten, normalized, label_features)
+        return logits
 
 
 class ModelOutput:
@@ -224,7 +229,7 @@ class LargeMarginCosineLoss(torch.nn.Module):
     Softmax and sigmoid focal loss
     """
 
-    def __init__(self, num_labels=3, scale=30, margin=0.35, activation_type='softmax'):
+    def __init__(self, num_labels=9, scale=30, margin=0.35, activation_type='softmax'):
 
         super(LargeMarginCosineLoss, self).__init__()
         self.num_labels = num_labels
