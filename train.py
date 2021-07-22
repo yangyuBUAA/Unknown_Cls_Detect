@@ -63,9 +63,9 @@ def train(config):
             train_loss.backward()
             optimizer.step()
 
-            if index % 10 == 0 and index > 0:
+            if index % 200 == 0 and index > 0:
                 logger.info("train epoch {}/{} batch {}/{} loss {}".format(str(epoch), str(config["EPOCH"]), str(index), str(len(train_dataloader)), str(train_loss.item())))
-            if index % 1000 == 0:
+            if index % 5000 == 0:
                 evaluate(config, model, eval_dataloader)
                 if index > 0:
                     checkpoint_name = os.path.join(config["checkpoint_path"],"checkpoint-epoch{}-batch{}.bin".format(str(epoch), str(index)))
@@ -175,7 +175,7 @@ def construct_dataset(tokenizer, SOURCE_PATH):
     label_list = list()
     with open(SOURCE_PATH, "r", encoding="utf-8") as train_set:
         data = train_set.readlines()
-        i = 10000000
+        i = 1000
         for line in tqdm(data):
             line = line.strip()
             sequence, label = line[:-2].strip(), line[-1]
